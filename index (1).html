@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Авария на «Авроре-7»</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#e6ebf1;--panel:#ffffff;--panel2:#eef2f7;--ink:#122033;--muted:#566579;--line:#c5d0de;
+  --good:#0a8f58;--bad:#cf2f46;--warn:#a96200;--shadow:0 8px 28px rgba(18,32,51,.14);--scan:rgba(18,32,51,.045);
+  --btnink:#06121f;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#060a11;--panel:#0d1522;--panel2:#131f31;--ink:#dce8f6;--muted:#8499b1;--line:#22324a;
+    --good:#34e39b;--bad:#ff5468;--warn:#ffb13d;--shadow:0 8px 28px rgba(0,0,0,.5);--scan:rgba(160,200,255,.045);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#060a11;--panel:#0d1522;--panel2:#131f31;--ink:#dce8f6;--muted:#8499b1;--line:#22324a;
+  --good:#34e39b;--bad:#ff5468;--warn:#ffb13d;--shadow:0 8px 28px rgba(0,0,0,.5);--scan:rgba(160,200,255,.045);
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Exo 2',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;font-weight:500;font-size:16px;line-height:1.45}
+.mono,.coord,.lv,.g-val{font-family:'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace}
+.wrap{max-width:940px;margin:0 auto;padding:14px 14px 40px}
+h1,h2,h3,h4{font-family:'Exo 2',system-ui,sans-serif;margin:0}
+button{font:inherit;font-weight:700;cursor:pointer;color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 14px;transition:border-color .12s,transform .06s}
+button:hover{border-color:var(--ac,#4da3ff)}
+button:active{transform:translateY(1px)}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--ac,#4da3ff);outline-offset:2px}
+button:disabled{opacity:.42;cursor:not-allowed}
+input{font:inherit;font-weight:500;color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%}
+.big{display:block;width:100%;padding:16px;font-size:18px;font-weight:800;letter-spacing:.06em;background:var(--ac,#4da3ff);color:var(--btnink);border:0;border-radius:12px;text-transform:uppercase}
+.big:hover{filter:brightness(1.08)}
+.hint{color:var(--muted);font-size:14px;line-height:1.5;margin:0 0 14px}
+.hint.sm{font-size:13px;margin:12px 0 0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+.pad{padding:18px}
+
+/* ---------- Menu & lobby ---------- */
+.hazard{height:10px;border-radius:6px;background:repeating-linear-gradient(-45deg,#f2b705 0 14px,#16181d 14px 28px);margin-bottom:22px}
+.hero h1{font-size:clamp(30px,7vw,52px);font-weight:800;line-height:1.05;letter-spacing:-.01em}
+.hero p{max-width:60ch;color:var(--muted);margin:14px 0 22px;font-size:17px}
+.stack{display:grid;gap:14px}
+label{display:block;font-size:14px;color:var(--muted);font-weight:700}
+label input{margin-top:6px;color:var(--ink)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.err{color:var(--bad);font-weight:700;margin:0 0 12px}
+details{margin-top:14px;padding:14px 18px}
+summary{cursor:pointer;font-weight:800}
+details ol{margin:10px 0 0;padding-left:20px;color:var(--muted)}
+details li{margin:6px 0}
+.roles{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin:16px 0}
+.rolecard{--ac:#4da3ff;display:grid;gap:2px;text-align:left;padding:14px 16px;border-radius:14px;border:2px solid var(--line);background:var(--panel)}
+.rolecard .ic{font-size:30px}
+.rolecard b{font-size:20px;color:var(--ac)}
+.rolecard small{color:var(--muted);font-size:13px}
+.rolecard em{font-style:normal;font-size:14px;margin-top:6px;color:var(--muted)}
+.rolecard.taken em{color:var(--ink)}
+.rolecard:disabled{opacity:1;cursor:default}
+.rolecard.mine{border-color:var(--ac);box-shadow:0 0 0 3px color-mix(in srgb,var(--ac) 30%,transparent)}
+.code{font-family:'JetBrains Mono',monospace;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:2px 10px;letter-spacing:.12em}
+.lobby-h{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+
+/* ---------- HUD ---------- */
+.hud{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);border-bottom:1px solid var(--line)}
+.hud[hidden]{display:none}
+.hud-in{max-width:940px;margin:0 auto;padding:8px 14px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px}
+.pips{display:flex;gap:6px}
+.pip{width:26px;height:8px;border-radius:4px;background:var(--line)}
+.pip.done{background:var(--good)}
+.pip.cur{background:var(--warn);animation:blink 1.2s infinite}
+.hud small{display:block;color:var(--muted);font-size:12px;margin-top:4px}
+.timer{font:800 36px/1 'JetBrains Mono',monospace;letter-spacing:.02em;text-align:center}
+.timer.low{color:var(--bad);animation:blink .8s infinite}
+.hr{text-align:right}
+.hull{display:inline-flex;gap:4px}
+.hull i{width:16px;height:22px;border-radius:4px;background:var(--good);display:block}
+.hull i.off{background:var(--line)}
+.hud.shake{animation:shake .4s}
+@keyframes blink{50%{opacity:.45}}
+@keyframes shake{20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+@media (prefers-reduced-motion:reduce){.pip.cur,.timer.low,.hud.shake{animation:none}}
+
+/* ---------- Compartments ---------- */
+.tabs{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.tabs button{--ac:#4da3ff;flex:1;min-width:120px}
+.tabs button.on{border-color:var(--ac);background:color-mix(in srgb,var(--ac) 18%,var(--panel))}
+.banner{padding:10px 14px;border-radius:10px;background:color-mix(in srgb,var(--warn) 18%,var(--panel));border:1px solid var(--warn);margin-bottom:12px;font-weight:700}
+.room{--ac:#4da3ff;border:1px solid var(--line);border-top:5px solid var(--ac);border-radius:14px;background-color:var(--panel);box-shadow:var(--shadow);overflow:hidden}
+.room.eng{background-image:repeating-linear-gradient(0deg,var(--scan) 0 1px,transparent 1px 4px)}
+.room.nav{background-image:linear-gradient(var(--scan) 1px,transparent 1px),linear-gradient(90deg,var(--scan) 1px,transparent 1px);background-size:28px 28px}
+.room.ops{background-image:radial-gradient(var(--scan) 1.5px,transparent 1.6px);background-size:16px 16px}
+.room.rad{background-image:repeating-linear-gradient(100deg,var(--scan) 0 2px,transparent 2px 14px)}
+.room-h{display:flex;gap:12px;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line);background:var(--panel2)}
+.room-h .ic{font-size:32px}
+.rn{font-size:20px;font-weight:800;color:var(--ac);line-height:1.1}
+.rr{font-size:14px;color:var(--muted)}
+.mod{padding:10px 16px;font-size:14px;color:var(--muted);border-bottom:1px dashed var(--line)}
+.mod b{color:var(--ink)}
+.body{padding:16px}
+h4{font-size:16px;margin:0 0 8px;color:var(--ac)}
+
+.gauges{display:flex;gap:14px;justify-content:space-around;flex-wrap:wrap}
+.gauge{text-align:center;width:74px}
+.g-bar{height:150px;border:2px solid var(--line);border-radius:10px;position:relative;overflow:hidden;background:var(--panel2)}
+.g-bar i{position:absolute;bottom:0;left:0;right:0;opacity:.88}
+.g-val{font-size:34px;font-weight:700;margin-top:6px}
+.g-n{font-size:13px;color:var(--muted)}
+.tbl{width:100%;border-collapse:collapse;font-size:15px}
+.tbl td,.tbl th{padding:8px 8px;border-bottom:1px solid var(--line);text-align:left}
+.tbl td:nth-child(2){color:var(--muted);width:24px;text-align:center}
+.sw{display:inline-block;width:14px;height:14px;border-radius:50%;vertical-align:-2px;margin-right:8px}
+.lamp{display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--line);border-radius:10px;margin-bottom:14px;background:var(--panel2)}
+.lamp .dot{width:16px;height:16px;border-radius:50%;background:var(--c);box-shadow:0 0 12px var(--c)}
+.levers{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.lever{border:1px solid var(--line);border-radius:12px;background:var(--panel2);padding:10px 6px;text-align:center;display:flex;flex-direction:column;gap:6px;align-items:center}
+.lever button{width:100%;padding:8px 0}
+.lv{font-size:34px;font-weight:700}
+.ln{font-size:13px;color:var(--muted);font-weight:700}
+.chips{display:flex;flex-wrap:wrap;gap:10px}
+.chip{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:22px;padding:8px 14px;border-radius:10px;border:2px solid var(--bad);color:var(--bad)}
+.maze{display:block;width:100%;max-width:420px;margin:0 auto}
+.maze text{fill:var(--muted);font:700 12px 'JetBrains Mono',monospace}
+.maze line{stroke:var(--ink);stroke-width:4;stroke-linecap:round}
+.maze .star{fill:#ffb13d;font-size:30px}
+.maze rect{fill:var(--panel2);stroke:none}
+.dpad{display:grid;grid-template-columns:repeat(3,minmax(0,92px));grid-template-rows:repeat(3,76px);gap:8px;justify-content:center;margin:6px 0 14px}
+.dpad button{display:grid;place-items:center;line-height:1.1;padding:4px}
+.dpad button span{font-size:26px}
+.dpad button small{font-size:12px;color:var(--muted)}
+.mvlog{text-align:center;color:var(--muted);min-height:24px}
+.pos{font:700 64px/1 'JetBrains Mono',monospace;text-align:center;color:var(--ac);padding:22px 0;border:2px dashed var(--ac);border-radius:14px}
+.bigword{font-size:clamp(34px,9vw,52px);font-weight:800;text-align:center;padding:30px 10px;border:2px dashed var(--ac);border-radius:14px;letter-spacing:.04em}
+.codes{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.codes button{padding:20px 10px;font-size:20px;font-weight:800}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.clue{padding:16px;border:2px dashed var(--ac);border-radius:14px;margin-bottom:16px;font-size:20px;line-height:1.35}
+.clue small{display:block;color:var(--muted);font-size:13px;margin-bottom:6px}
+.slots{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.slot{height:60px;display:grid;place-items:center;border-radius:12px;border:2px solid var(--line);font:700 24px 'JetBrains Mono',monospace;color:var(--muted)}
+.slot.on{border-color:var(--good);color:var(--ink);background:color-mix(in srgb,var(--good) 18%,var(--panel))}
+.launch{font-size:22px;padding:22px}
+
+/* ---------- Overlay, toast, chat ---------- */
+#ov{position:fixed;inset:0;background:rgba(3,7,13,.8);display:grid;place-items:center;z-index:50;padding:20px}
+#ov[hidden]{display:none}
+#ov .box{max-width:460px;width:100%;padding:28px;text-align:center}
+#ov h2{font-size:34px;font-weight:800;margin-bottom:10px}
+#ov p{color:var(--muted);margin:0 0 18px}
+#ov .st{display:flex;justify-content:center;gap:24px;margin-bottom:20px;font-weight:700}
+#toast{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 92px);z-index:40;max-width:min(92vw,520px);padding:10px 18px;border-radius:12px;font-weight:800;background:var(--panel);border:2px solid var(--line);box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:opacity .2s;text-align:center}
+#toast.show{opacity:1}
+#toast.ok{border-color:var(--good)}
+#toast.bad{border-color:var(--bad)}
+#chat{margin-top:16px;padding:12px 14px}
+#chat[hidden]{display:none}
+#clog{max-height:160px;overflow-y:auto;font-size:14px;margin-bottom:10px;display:grid;gap:4px}
+#clog p{margin:0}
+#clog .me b{color:var(--good)}
+#clog .none{color:var(--muted)}
+.cin{display:flex;gap:8px}
+@media (max-width:560px){
+  .two{grid-template-columns:1fr}
+  .row2{grid-template-columns:1fr}
+  .roles{grid-template-columns:1fr 1fr;gap:8px}
+  .rolecard{padding:12px}
+  .timer{font-size:30px}
+  .hud-in{padding:8px 10px}
+  .pip{width:18px}
+}
+</style>
+</head>
+<body>
+<div id="hud" class="hud" hidden>
+  <div class="hud-in">
+    <div><div class="pips" id="pips"></div><small id="hmod"></small></div>
+    <div class="timer" id="timer">10:00</div>
+    <div class="hr"><div class="hull" id="hull"></div><small id="hroom"></small></div>
+  </div>
+</div>
+<div class="wrap">
+  <main id="main"></main>
+  <div id="chat" class="card" hidden>
+    <div id="clog"></div>
+    <div class="cin"><input id="cin" maxlength="140" placeholder="Текстовый чат — лучше говорить голосом, но можно и так" aria-label="Сообщение"><button id="csend">Отправить</button></div>
+  </div>
+</div>
+<div id="ov" hidden></div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+(function(){
+'use strict';
+
+/* ======================================================================
+   Константы и вспомогательные функции
+   ====================================================================== */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const clone=o=>JSON.parse(JSON.stringify(o));
+
+const ROLES={
+  eng:{n:'Инженер', g:'Инженера', room:'Машинное отделение',ic:'🛠',c:'#ff9d3d'},
+  nav:{n:'Штурман', g:'Штурмана', room:'Мостик',            ic:'🧭',c:'#4da3ff'},
+  ops:{n:'Оператор',g:'Оператора',room:'Пульт управления',  ic:'🎛',c:'#3fe0a0'},
+  rad:{n:'Радист',  g:'Радиста',  room:'Радиорубка',        ic:'📡',c:'#c58bff'}
+};
+const RK=['eng','nav','ops','rad'];
+const STAGES=['Охлаждение реактора','Минное поле','Протокол связи','Синхронный запуск'];
+const ORDW=['первым','вторым','третьим','четвёртым'];
+const DIRS={n:[0,-1,'s'],e:[1,0,'w'],s:[0,1,'n'],w:[-1,0,'e']};
+const START_TIME=600;
+
+/* ======================================================================
+   Детерминированная генерация миссии из seed:
+   у всех игроков одинаковые данные, но каждый видит только свою часть.
+   ====================================================================== */
+function rng(seed){let a=seed>>>0;return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function shuffle(arr,r){const a=arr.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));const t=a[i];a[i]=a[j];a[j]=t;}return a;}
+function allPerms(a){if(a.length<=1)return[a.slice()];const out=[];a.forEach((x,i)=>{allPerms(a.filter((_,j)=>j!==i)).forEach(p=>out.push([x].concat(p)));});return out;}
+function sat(o,c){const i=x=>o.indexOf(x);switch(c.t){case'pos':return i(c.a)===c.k;case'npos':return i(c.a)!==c.k;case'bef':return i(c.a)<i(c.b);case'next':return i(c.b)===i(c.a)+1;}return false;}
+function coord(x,y){return String.fromCharCode(65+x)+(y+1);}
+function reach(open,start,exit,mset,W,H){
+  const seen=new Set([start.join(',')]),q=[start];
+  while(q.length){
+    const [x,y]=q.shift();
+    if(x===exit[0]&&y===exit[1])return true;
+    for(const d in DIRS){
+      if(!open[y][x][d])continue;
+      const nx=x+DIRS[d][0],ny=y+DIRS[d][1],k=nx+','+ny;
+      if(nx<0||ny<0||nx>=W||ny>=H||seen.has(k)||mset.has(k))continue;
+      seen.add(k);q.push([nx,ny]);
+    }
+  }
+  return false;
+}
+
+function gen(seed){
+  const r=rng(seed);
+  const G={seed};
+
+  /* Модуль 1: реактор */
+  const levNames=['ДЕЛЬТА','СИГМА','ОМЕГА','ТЕТА'];
+  const colors=[{n:'красный',c:'#ff5468'},{n:'синий',c:'#4da3ff'},{n:'жёлтый',c:'#ffd24d'},{n:'зелёный',c:'#4dff9a'}];
+  const mapped=shuffle(levNames,r);
+  const target=colors.map(()=>Math.floor(r()*10));
+  const lamps=[{n:'ПОКОЙ',c:'#4dffa8',d:0,rule:'значения остаются как есть'},{n:'НАГРУЗКА',c:'#ffd24d',d:2,rule:'к каждому значению прибавить 2 (после 9 идёт 0)'},{n:'ФОРСАЖ',c:'#ff5468',d:-3,rule:'из каждого значения вычесть 3 (после 0 идёт 9)'}];
+  const lamp=Math.floor(r()*3);
+  const answer={};
+  colors.forEach((c,i)=>{answer[mapped[i]]=(((target[i]+lamps[lamp].d)%10)+10)%10;});
+  G.s1={colors,mapped,target,lamps,lamp,panelOrder:shuffle(levNames,r),answer};
+
+  /* Модуль 2: минное поле */
+  const W=6,H=6;
+  const open=[];for(let y=0;y<H;y++){open.push([]);for(let x=0;x<W;x++)open[y].push({n:0,e:0,s:0,w:0});}
+  const seen=[];for(let y=0;y<H;y++)seen.push(Array(W).fill(false));
+  const stack=[[0,0]];seen[0][0]=true;
+  while(stack.length){
+    const [x,y]=stack[stack.length-1];
+    const nb=shuffle(Object.keys(DIRS),r).filter(d=>{const nx=x+DIRS[d][0],ny=y+DIRS[d][1];return nx>=0&&ny>=0&&nx<W&&ny<H&&!seen[ny][nx];});
+    if(!nb.length){stack.pop();continue;}
+    const d=nb[0],nx=x+DIRS[d][0],ny=y+DIRS[d][1];
+    open[y][x][d]=1;open[ny][nx][DIRS[d][2]]=1;seen[ny][nx]=true;stack.push([nx,ny]);
+  }
+  for(let i=0;i<8;i++){
+    const x=Math.floor(r()*W),y=Math.floor(r()*H),d=['n','e','s','w'][Math.floor(r()*4)];
+    const nx=x+DIRS[d][0],ny=y+DIRS[d][1];
+    if(nx<0||ny<0||nx>=W||ny>=H)continue;
+    open[y][x][d]=1;open[ny][nx][DIRS[d][2]]=1;
+  }
+  const sx=r()<.5?0:W-1,sy=r()<.5?0:H-1,start=[sx,sy],exit=[W-1-sx,H-1-sy];
+  let mines=[],mset=new Set();
+  const cells=[];
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+    if(x===sx&&y===sy)continue;if(x===exit[0]&&y===exit[1])continue;cells.push([x,y]);
+  }
+  for(let cnt=5;cnt>=1&&!mines.length;cnt--){
+    for(let t=0;t<150;t++){
+      const m=shuffle(cells,r).slice(0,cnt),set=new Set(m.map(c=>c.join(',')));
+      if(reach(open,start,exit,set,W,H)){mines=m;mset=set;break;}
+    }
+  }
+  G.s2={W,H,open,start,exit,mines,mset};
+
+  /* Модуль 3: протокол связи */
+  const sigs=['ВЕГА','ОРИОН','НОВА','ПУЛЬСАР','КВАЗАР','ЗЕНИТ','АТЛАС','ТИТАН'];
+  const codes=['ЛЁД','ЖАР','ТЬМА','ВОЛНА','ИСКРА','ПЫЛЬ','ГРОМ','ТУМАН'];
+  const tA=shuffle(codes,r);let tB=shuffle(codes,r);
+  for(let t=0;t<60&&tB.some((w,i)=>w===tA[i]);t++)tB=shuffle(codes,r);
+  if(tB.some((w,i)=>w===tA[i]))tB=tA.slice(1).concat(tA[0]);
+  const ids=shuffle([0,1,2,3,4,5,6,7],r).slice(0,3);
+  const rounds=ids.map(i=>{
+    const mode=r()<.5?0:1,ans=mode?tB[i]:tA[i],other=mode?tA[i]:tB[i];
+    const rest=shuffle(codes.filter(w=>w!==ans&&w!==other),r).slice(0,4);
+    return{i,sig:sigs[i],mode,ans,btns:shuffle([ans,other].concat(rest),r)};
+  });
+  G.s3={sigs,tA,tB,rounds,modes:['АЛЬФА','БЕТА']};
+
+  /* Модуль 4: порядок запуска */
+  const perm=shuffle(RK,r),pool=[];
+  perm.forEach((a,i)=>{
+    pool.push({t:'pos',a,k:i});
+    for(let k=0;k<4;k++)if(k!==i)pool.push({t:'npos',a,k});
+    perm.forEach((b,j)=>{if(j>i)pool.push({t:'bef',a,b});});
+    if(i<3)pool.push({t:'next',a,b:perm[i+1]});
+  });
+  const perms=allPerms(RK);let clues=null;
+  for(let t=0;t<4000&&!clues;t++){
+    const pick=shuffle(pool,r).slice(0,4);
+    if(perms.filter(o=>pick.every(c=>sat(o,c))).length===1)clues=pick;
+  }
+  if(!clues)clues=perm.map((a,i)=>({t:'pos',a,k:i}));
+  const who=shuffle(RK,r),cl={};who.forEach((ro,i)=>{cl[ro]=clues[i];});
+  G.s4={perm,clues:cl};
+  return G;
+}
+
+function clueText(c){
+  switch(c.t){
+    case'pos':return ROLES[c.a].n+' нажимает <b>'+ORDW[c.k]+'</b>.';
+    case'npos':return ROLES[c.a].n+' нажимает <b>не '+ORDW[c.k]+'</b>.';
+    case'bef':return ROLES[c.a].n+' нажимает <b>раньше</b> '+ROLES[c.b].g+'.';
+    case'next':return ROLES[c.b].n+' нажимает <b>сразу после</b> '+ROLES[c.a].g+'.';
+  }
+  return '';
+}
+
+/* ======================================================================
+   Состояние
+   ====================================================================== */
+let mode='menu',solo=false,room=null,S=null,G=null,hosting=false,timer=null,endAt=0;
+let myRole=null,myName='',code='',soloRole='eng',menuErr='';
+let lev=[0,0,0,0],aSeq=0,aQ=[],lastN={},screen='',lastSig='',seenSeed=null,lastEv=0,lastPh='';
+let cseq=0,cQ=[],chatSeen={},chatLog=[],toastT=null,muted=false;
+
+const hud=$('#hud'),main=$('#main'),ov=$('#ov'),chat=$('#chat');
+
+/* ======================================================================
+   Звук и уведомления
+   ====================================================================== */
+let ac=null;
+function beep(f,d,type){
+  if(muted)return;
+  try{
+    ac=ac||new(window.AudioContext||window.webkitAudioContext)();
+    const o=ac.createOscillator(),g=ac.createGain();
+    o.type=type||'sine';o.frequency.value=f;g.gain.value=.06;
+    o.connect(g);g.connect(ac.destination);o.start();
+    g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+(d||.14));o.stop(ac.currentTime+(d||.14));
+  }catch(e){}
+}
+function sfx(k){
+  if(k==='ok'){beep(660,.12);setTimeout(()=>beep(880,.18),110);}
+  else if(k==='bad'){beep(140,.35,'sawtooth');}
+  else{beep(330,.08);}
+}
+function toast(t,k){
+  const el=$('#toast');el.textContent=t;el.className='show '+(k||'');
+  clearTimeout(toastT);toastT=setTimeout(()=>{el.className='';},3200);
+}
+
+/* ======================================================================
+   Игровая логика (работает у хоста или в одиночной тренировке)
+   ====================================================================== */
+function newState(seed){
+  return{ph:'play',seed,st:0,v:1,left:START_TIME,hull:3,rnd:0,pos:G.s2.start.slice(),ord:0,why:'',
+         ev:{n:0,k:'',t:''},mv:{n:0,t:''}};
+}
+function ev(k,t){S.ev={n:S.ev.n+1,k,t};}
+function end(res,why){S.ph=res;S.why=why||'';clearInterval(timer);timer=null;}
+function strike(t){
+  S.hull--;endAt-=30000;ev('bad','💥 '+t+' · −30 с');
+  if(S.hull<=0)end('lose','hull');
+}
+function advance(t){
+  if(S.st>=3){ev('ok','🚀 Двигатели запущены!');end('win');return;}
+  S.st++;S.rnd=0;S.ord=0;ev('ok',t);
+}
+function applyAction(a,role){
+  if(!S||S.ph!=='play'||!a||typeof a!=='object')return;
+  switch(a.k){
+    case'apply':{
+      if(role!=='ops'||S.st!==0||!Array.isArray(a.d)||a.d.length!==4)return;
+      let ok=0;
+      G.s1.panelOrder.forEach((n,i)=>{if(+a.d[i]===G.s1.answer[n])ok++;});
+      if(ok===4)advance('✔ Реактор стабилизирован');
+      else strike('Реактор: верно '+ok+' из 4');
+      break;
+    }
+    case'mv':{
+      if(role!=='ops'||S.st!==1||typeof a.d!=='string'||a.d.length!==1||!(a.d in DIRS))return;
+      const d=a.d,x=S.pos[0],y=S.pos[1];
+      if(!G.s2.open[y][x][d]){
+        endAt-=3000;S.mv={n:S.mv.n+1,t:'🧱 Стена — путь закрыт'};ev('info','🧱 Врезались в стену · −3 с');break;
+      }
+      const nx=x+DIRS[d][0],ny=y+DIRS[d][1];
+      if(G.s2.mset.has(nx+','+ny)){
+        S.mv={n:S.mv.n+1,t:'💥 Впереди мина'};strike('Подрыв на мине');break;
+      }
+      S.pos=[nx,ny];S.mv={n:S.mv.n+1,t:'Шаг выполнен'};
+      if(nx===G.s2.exit[0]&&ny===G.s2.exit[1])advance('✔ Выход из минного поля найден');
+      break;
+    }
+    case'pick':{
+      if(role!=='ops'||S.st!==2||typeof a.w!=='string')return;
+      if(a.w===G.s3.rounds[S.rnd].ans){
+        S.rnd++;
+        if(S.rnd>=3)advance('✔ Связь восстановлена');else ev('ok','✔ Код принят');
+      }else strike('Неверный код');
+      break;
+    }
+    case'launch':{
+      if(S.st!==3||!ROLES[role])return;
+      if(G.s4.perm[S.ord]===role){
+        S.ord++;
+        if(S.ord>=4)advance('');else ev('ok','🔑 Ключ принят ('+S.ord+'/4)');
+      }else{S.ord=0;strike('Нарушен порядок запуска');}
+      break;
+    }
+    default:return;
+  }
+  commit();
+}
+function commit(){
+  if(!S)return;
+  if(S.ph==='play'){
+    S.left=Math.max(0,Math.ceil((endAt-Date.now())/1000));
+    if(S.left<=0)end('lose','time');
+  }
+  S.v++;
+  if(!solo&&room)room.presence({st:clone(S)}).catch(()=>{});
+  render();
+}
+function tick(){
+  if(!S||S.ph!=='play')return;
+  const l=Math.max(0,Math.ceil((endAt-Date.now())/1000));
+  if(l!==S.left)commit();
+}
+function startTimer(){clearInterval(timer);endAt=Date.now()+S.left*1000;timer=setInterval(tick,400);}
+
+function startGame(){
+  const seed=(Math.random()*2147483647)|0;
+  G=gen(seed);S=newState(seed);hosting=!solo;lev=[0,0,0,0];
+  lastN={};
+  startTimer();
+  if(!solo&&room)room.presence({host:1,st:clone(S)}).catch(()=>{});
+  render();
+}
+function backToLobby(){
+  clearInterval(timer);timer=null;S=null;hosting=false;lastSig='';
+  if(solo){solo=false;mode='menu';screen='';}
+  else if(room)room.presence({host:null,st:null}).catch(()=>{});
+  render();
+}
+
+
+/*NET-START*/
+/* ======================================================================
+   Сеть на PeerJS (WebRTC). Первый игрок с данным кодом становится «узлом»
+   комнаты: остальные подключаются к нему, а он рассылает всем общую
+   таблицу присутствия. Интерфейс тот же, что и у комнаты Claude.
+   ====================================================================== */
+function createRoom(code){
+  return new Promise(function(resolve,reject){
+    const hubId='aurora7ship-'+code,me=Math.random().toString(36).slice(2,10);
+    let mine={},listeners=[],errs=[],connected=false,isHub=false,peer=null,hubConn=null,settled=false,retried=false,notifyT=null,bcastT=null,left=false;
+    const table={};let remote=[];
+    const merge=function(base,patch){const o=Object.assign({},base);for(const k in patch){if(patch[k]===null)delete o[k];else o[k]=patch[k];}return o;};
+    const tooBig=function(x){try{return JSON.stringify(x).length>6000;}catch(e){return true;}};
+
+    function list(){
+      let src=isHub?Object.keys(table).map(function(k){return{peer:k,presence:k===me?mine:table[k].presence};}):remote.map(function(r){return r.peer===me?{peer:me,presence:mine}:r;});
+      if(!src.some(function(r){return r.peer===me;}))src=src.concat([{peer:me,presence:mine}]);
+      return src.map(function(r){return{peer:r.peer,by:null,isMe:r.peer===me,sameTab:r.peer===me,kind:'viewer',guest:false,presence:r.presence||{},updatedAt:Date.now()};});
+    }
+    function notify(){
+      if(notifyT)return;
+      notifyT=setTimeout(function(){notifyT=null;const ps=list();listeners.slice().forEach(function(f){try{f({peers:ps,joined:[],left:[],updated:[]});}catch(e){console.error(e);}});},0);
+    }
+    function bcast(){
+      if(bcastT)return;
+      bcastT=setTimeout(function(){
+        bcastT=null;
+        const msg={t:'s',peers:Object.keys(table).map(function(k){return{peer:k,presence:k===me?mine:table[k].presence};})};
+        Object.keys(table).forEach(function(k){const c=table[k].conn;if(c&&c.open){try{c.send(msg);}catch(e){}}});
+      },30);
+    }
+    function fail(err){
+      if(settled)return;settled=true;
+      try{if(peer)peer.destroy();}catch(e){}
+      reject(err);
+    }
+    function finish(){
+      if(settled)return;settled=true;
+      resolve(api);notify();
+    }
+    function hubAccept(conn){
+      let label=null;
+      conn.on('data',function(d){
+        if(!d||typeof d!=='object')return;
+        if(d.t==='hello'&&typeof d.label==='string'&&!label){
+          if(Object.keys(table).length>=12||table[d.label]){try{conn.close();}catch(e){}return;}
+          label=d.label.slice(0,16);table[label]={presence:{},conn:conn};bcast();notify();
+        }else if(d.t==='p'&&label&&d.patch&&typeof d.patch==='object'&&!tooBig(d.patch)){
+          table[label].presence=merge(table[label].presence,d.patch);bcast();notify();
+        }
+      });
+      conn.on('close',function(){if(label&&table[label]&&table[label].conn===conn){delete table[label];bcast();notify();}});
+      conn.on('error',function(){});
+    }
+    function tryHub(){
+      peer=new Peer(hubId,{debug:0});
+      peer.on('open',function(){isHub=true;connected=true;table[me]={presence:mine,conn:null};peer.on('connection',hubAccept);finish();});
+      peer.on('error',function(err){
+        if(!isHub&&!settled&&err&&err.type==='unavailable-id'){try{peer.destroy();}catch(e){}tryClient();}
+        else if(!settled)fail(err);
+        else errs.slice().forEach(function(f){f({code:'upstream_error',message:String(err&&err.type)});});
+      });
+    }
+    function tryClient(){
+      peer=new Peer({debug:0});
+      peer.on('open',function(){
+        const c=peer.connect(hubId,{reliable:true,serialization:'json'});
+        hubConn=c;
+        c.on('open',function(){
+          c.send({t:'hello',label:me});
+          if(Object.keys(mine).length)c.send({t:'p',patch:mine});
+          connected=true;finish();
+        });
+        c.on('data',function(d){
+          if(d&&d.t==='s'&&Array.isArray(d.peers)){
+            remote=d.peers.filter(function(r){return r&&typeof r.peer==='string'&&r.presence&&typeof r.presence==='object';});
+            notify();
+          }
+        });
+        c.on('close',function(){
+          connected=false;remote=[];notify();
+          if(!left)errs.slice().forEach(function(f){f({code:'upstream_error',message:'hub closed'});});
+        });
+      });
+      peer.on('error',function(err){
+        if(!settled&&!retried&&err&&err.type==='peer-unavailable'){retried=true;try{peer.destroy();}catch(e){}tryHub();}
+        else if(!settled)fail(err);
+        else{connected=false;errs.slice().forEach(function(f){f({code:'upstream_error',message:String(err&&err.type)});});}
+      });
+    }
+    const api={
+      peers:function(){return list();},
+      onPeers:function(fn,onErr){
+        listeners.push(fn);if(onErr)errs.push(onErr);
+        return function(){listeners=listeners.filter(function(x){return x!==fn;});errs=errs.filter(function(x){return x!==onErr;});};
+      },
+      presence:function(patch){
+        mine=merge(mine,patch);
+        if(isHub){table[me].presence=mine;bcast();}
+        else if(hubConn&&hubConn.open){try{hubConn.send({t:'p',patch:patch});}catch(e){}}
+        notify();return Promise.resolve();
+      },
+      connected:function(){return connected;},
+      leave:function(){left=true;connected=false;try{if(peer)peer.destroy();}catch(e){}return Promise.resolve();}
+    };
+    setTimeout(function(){fail(new Error('timeout'));},15000);
+    tryHub();
+  });
+}
+/*NET-END*/
+
+/* ======================================================================
+   Сеть (комната Claude): состояние публикует хост, остальные шлют действия
+   ====================================================================== */
+function byPeer(a,b){return a.peer<b.peer?-1:a.peer>b.peer?1:0;}
+function viewers(){return room?room.peers().filter(p=>p.kind==='viewer'):[];}
+function holders(){
+  const m={};
+  viewers().filter(p=>p.presence&&ROLES[p.presence.role]).sort(byPeer).forEach(p=>{if(!m[p.presence.role])m[p.presence.role]=p;});
+  return m;
+}
+function okState(st){
+  return st&&typeof st==='object'&&typeof st.ph==='string'&&typeof st.seed==='number'&&st.st>=0&&st.st<=3&&
+    Array.isArray(st.pos)&&st.pos.length===2&&st.ev&&typeof st.ev==='object'&&st.mv&&typeof st.mv==='object'&&
+    typeof st.left==='number'&&typeof st.hull==='number';
+}
+function viewState(){
+  if(S)return S;
+  if(solo||!room)return null;
+  const hs=viewers().filter(p=>p.presence&&p.presence.host&&okState(p.presence.st)).sort(byPeer);
+  return hs.length?hs[0].presence.st:null;
+}
+function send(act){
+  const role=solo?soloRole:myRole;
+  if(!role)return;
+  if(S){applyAction(act,role);return;}
+  if(!room)return;
+  aSeq++;aQ.push(Object.assign({n:aSeq},act));aQ=aQ.slice(-6);
+  room.presence({a:aQ}).catch(()=>{});
+}
+function processActions(ps){
+  const h=holders();
+  ps.forEach(p=>{
+    if(p.isMe||p.kind!=='viewer')return;
+    const a=p.presence&&p.presence.a;if(!Array.isArray(a))return;
+    const last=lastN[p.peer]||0;let mx=last;
+    const role=p.presence.role;
+    a.filter(x=>x&&typeof x.n==='number'&&x.n>last).sort((x,y)=>x.n-y.n).forEach(x=>{
+      mx=Math.max(mx,x.n);
+      if(ROLES[role]&&h[role]&&h[role].peer===p.peer)applyAction(x,role);
+    });
+    lastN[p.peer]=mx;
+  });
+}
+function onPeers(){
+  if(!room)return;
+  const ps=room.peers();
+  // роль занята кем-то с меньшим id — уступаем
+  if(myRole){
+    const h=holders()[myRole];
+    if(h&&!h.isMe){myRole=null;room.presence({role:null}).catch(()=>{});toast('Эту роль уже занял другой игрок','bad');}
+  }
+  // два хоста одновременно — остаётся тот, у кого меньше id
+  if(hosting){
+    const me=ps.find(p=>p.isMe&&p.sameTab);
+    const other=viewers().filter(p=>!p.isMe&&p.presence&&p.presence.host).sort(byPeer)[0];
+    if(me&&other&&other.peer<me.peer){
+      clearInterval(timer);S=null;hosting=false;lastSig='';
+      room.presence({host:null,st:null}).catch(()=>{});
+    }
+  }
+  if(hosting)processActions(ps);
+  harvestChat(ps);
+  render();
+}
+async function goOnline(){
+  const nm=($('#iname').value||'').trim().slice(0,16)||'Курсант';
+  const cd=($('#icode').value||'').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,10);
+  if(!cd){menuErr='Введите код комнаты (латинские буквы или цифры).';showMenu();return;}
+  myName=nm;code=cd;menuErr='';
+  main.innerHTML='<div class="card pad"><b>Подключаемся к комнате…</b></div>';
+  try{
+    if(typeof Peer==='undefined')throw new Error('no-peerjs');
+    room=await createRoom(cd);
+  }catch(e){
+    room=null;menuErr='Не удалось подключиться к серверу соединения (PeerJS). Проверьте интернет и повторите. Если не помогает — возможно, сеть блокирует WebRTC. Пока можно потренироваться в одиночку.';
+    showMenu();return;
+  }
+  mode='online';solo=false;myRole=null;lastN={};chatSeen={};chatLog=[];
+  room.onPeers(onPeers,()=>{toast('Соединение с комнатой потеряно','bad');});
+  room.presence({name:myName,role:null}).catch(()=>{});
+  chat.hidden=false;renderChat();
+  render();
+}
+function leaveRoom(){
+  if(room){room.leave().catch(()=>{});}
+  room=null;mode='menu';myRole=null;hosting=false;S=null;clearInterval(timer);timer=null;
+  screen='';lastSig='';chat.hidden=true;ov.hidden=true;hud.hidden=true;render();
+}
+function claim(r){
+  if(!room||!ROLES[r])return;
+  const h=holders()[r];if(h&&!h.isMe)return;
+  myRole=(myRole===r)?null:r;
+  room.presence({role:myRole}).catch(()=>{});
+  lastSig='';render();
+}
+
+/* ======================================================================
+   Чат
+   ====================================================================== */
+function sendChat(){
+  const inp=$('#cin');const t=inp.value.trim().slice(0,140);
+  if(!t||!room)return;
+  cseq++;cQ.push({n:cseq,t});cQ=cQ.slice(-3);
+  room.presence({c:cQ}).catch(()=>{});inp.value='';
+}
+function harvestChat(ps){
+  let ch=false;
+  ps.forEach(p=>{
+    const c=p.presence&&p.presence.c;if(!Array.isArray(c))return;
+    const seen=chatSeen[p.peer]||0;let mx=seen;
+    c.forEach(m=>{
+      if(m&&typeof m.n==='number'&&m.n>seen&&typeof m.t==='string'){
+        chatLog.push({me:p.isMe,name:String(p.presence.name||'Игрок').slice(0,16),role:p.presence.role,t:m.t.slice(0,140)});
+        mx=Math.max(mx,m.n);ch=true;
+      }
+    });
+    chatSeen[p.peer]=mx;
+  });
+  if(ch){if(chatLog.length>60)chatLog.splice(0,chatLog.length-60);renderChat();}
+}
+function renderChat(){
+  const el=$('#clog');if(!el)return;
+  if(!chatLog.length){el.innerHTML='<p class="none">Здесь появятся сообщения игроков.</p>';return;}
+  el.innerHTML=chatLog.map(m=>'<p class="'+(m.me?'me':'')+'"><b>'+(ROLES[m.role]?ROLES[m.role].ic+' ':'')+esc(m.name)+':</b> '+esc(m.t)+'</p>').join('');
+  el.scrollTop=el.scrollHeight;
+}
+
+/* ======================================================================
+   Экраны
+   ====================================================================== */
+function showMenu(){
+  screen='menu';hud.hidden=true;chat.hidden=true;ov.hidden=true;
+  if(!code)code=Array.from({length:4},()=>'ABCDEFGHJKLMNPQRSTUVWXYZ'[Math.floor(Math.random()*24)]).join('').toLowerCase();
+  if(!myName)myName='Курсант '+(10+Math.floor(Math.random()*90));
+  main.innerHTML=
+  '<div class="hazard"></div>'+
+  '<div class="hero"><h1>Авария на «Авроре-7»</h1>'+
+  '<p>Реактор перегрет, навигация отказала, двигатели молчат. Вас четверо, и каждый заперт в своём отсеке. У каждого на экране лишь часть данных — код, схема, кнопки или инструкция. Спасти корабль получится, только если вы будете постоянно рассказывать друг другу, что видите.</p></div>'+
+  '<div class="stack">'+
+  '<div class="card pad">'+(menuErr?'<p class="err">'+esc(menuErr)+'</p>':'')+
+  '<div class="row2"><label>Ваш позывной<input id="iname" maxlength="16" value="'+esc(myName)+'" autocomplete="off"></label>'+
+  '<label>Код комнаты<input id="icode" maxlength="10" value="'+esc(code)+'" autocomplete="off"></label></div>'+
+  '<button class="big" style="--ac:#ff9d3d" data-a="online">Войти в комнату</button>'+
+  '<p class="hint sm">Все четверо открывают эту страницу и вводят один и тот же код. Кто зашёл первым, тот создаёт комнату и должен оставаться на странице до конца игры. Для общения лучше включить голосовой звонок — в игре есть и текстовый чат.</p></div>'+
+  '<div class="card pad"><b>Тренировка</b><p class="hint" style="margin-top:6px">Один человек за всех четверых: переключайтесь между отсеками сами. Хорошо, чтобы изучить игру — но по-настоящему она раскрывается только вчетвером.</p>'+
+  '<button data-a="solo">Играть одному</button></div>'+
+  '<details class="card"><summary>Как играть</summary><ol>'+
+  '<li>Каждый занимает свой отсек: инженер, штурман, оператор или радист.</li>'+
+  '<li>В четырёх модулях нужно восстановить реактор, пройти минное поле, наладить связь и запустить двигатели.</li>'+
+  '<li>Только оператор нажимает рычаги и кнопки управления — но он не знает, какие. Остальные видят нужные данные и подсказывают.</li>'+
+  '<li>Ошибка — пробоина корпуса и минус 30 секунд. Три пробоины или конец времени — корабль потерян.</li></ol></details>'+
+  '</div>';
+}
+function showLobby(){
+  screen='lobby';hud.hidden=true;ov.hidden=true;lastSig='';
+  const h=holders(),ps=viewers(),ready=RK.every(r=>h[r]);
+  const hint=ready?'Все четыре отсека заняты. Можно начинать.':'Займите каждый свой отсек — нужны все четыре роли.';
+  main.innerHTML=
+  '<div class="hazard"></div>'+
+  '<div class="lobby-h"><h2>Комната <span class="code">'+esc(code)+'</span></h2><button data-a="leave">← Выйти</button></div>'+
+  '<p class="hint" style="margin-top:10px">Игроков в комнате: '+ps.length+'. '+hint+(room&&room.connected()?'':' (подключение…)')+'</p>'+
+  '<div class="roles">'+RK.map(r=>{
+    const o=ROLES[r],p=h[r],mine=myRole===r;
+    return '<button class="rolecard '+(p?'taken ':'')+(mine?'mine':'')+'" style="--ac:'+o.c+'" data-a="claim" data-r="'+r+'"'+(p&&!p.isMe?' disabled':'')+'>'+
+      '<span class="ic">'+o.ic+'</span><b>'+o.n+'</b><small>'+o.room+'</small>'+
+      '<em>'+(p?(p.isMe?'Это вы':esc(String(p.presence.name||'Игрок').slice(0,16))):'свободно — нажмите, чтобы занять')+'</em></button>';
+  }).join('')+'</div>'+
+  '<button class="big" style="--ac:#ff9d3d" data-a="start" '+(ready&&myRole?'':'disabled')+'>Запустить миссию</button>'+
+  '<p class="hint sm">'+(myRole?'':'Сначала выберите свою роль. ')+'Если создатель комнаты или игрок, нажавший «Запустить», закроет вкладку, миссия прервётся.</p>';
+}
+
+/* ----- Панели отсеков ----- */
+function shell(role,V,body){
+  const o=ROLES[role];
+  return '<section class="room '+role+'" style="--ac:'+o.c+'"><div class="room-h"><span class="ic">'+o.ic+'</span><div><div class="rn">'+o.room+'</div><div class="rr">'+o.n+'</div></div></div>'+
+    '<div class="mod"><b>Модуль '+(V.st+1)+' из 4</b> — '+STAGES[V.st]+'</div><div class="body">'+body+'</div></section>';
+}
+function s1(role,V){
+  const A=G.s1;
+  if(role==='eng'){
+    return '<p class="hint">Эталонные показания контуров охлаждения. Ты видишь только цвета — какой рычаг за какой контур отвечает, тебе неизвестно.</p>'+
+    '<div class="gauges">'+A.colors.map((c,i)=>'<div class="gauge"><div class="g-bar"><i style="height:'+(A.target[i]*10+10)+'%;background:'+c.c+'"></i></div><div class="g-val" style="color:'+c.c+'">'+A.target[i]+'</div><div class="g-n">'+c.n+'</div></div>').join('')+'</div>';
+  }
+  if(role==='nav'){
+    return '<p class="hint">Схема подключения: какой цветной контур управляется каким рычагом на пульте.</p>'+
+    '<table class="tbl">'+A.colors.map((c,i)=>'<tr><td><span class="sw" style="background:'+c.c+'"></span>'+c.n+'</td><td>→</td><td><b>'+A.mapped[i]+'</b></td></tr>').join('')+'</table>';
+  }
+  if(role==='ops'){
+    const L=A.lamps[A.lamp];
+    return '<p class="hint">Выставь рычаги и нажми «Применить». Какие значения нужны — подскажут остальные. Ошибка стоит пробоины.</p>'+
+    '<div class="lamp"><span class="dot" style="--c:'+L.c+'"></span><span>Режим реактора: <b>'+L.n+'</b></span></div>'+
+    '<div class="levers">'+A.panelOrder.map((n,i)=>'<div class="lever"><div class="ln">'+n+'</div><button data-a="lv" data-i="'+i+'" data-d="1" aria-label="Больше">▲</button><div class="lv">'+lev[i]+'</div><button data-a="lv" data-i="'+i+'" data-d="-1" aria-label="Меньше">▼</button></div>').join('')+'</div>'+
+    '<button class="big" data-a="apply">Применить настройки</button>';
+  }
+  return '<p class="hint">Справочник поправок. Индикатор режима реактора виден только на пульте управления.</p>'+
+  '<table class="tbl">'+A.lamps.map(l=>'<tr><td><span class="sw" style="background:'+l.c+'"></span><b>'+l.n+'</b></td><td>→</td><td>'+l.rule+'</td></tr>').join('')+'</table>'+
+  '<p class="hint sm">Поправка применяется к эталонным показаниям перед тем, как выставлять рычаги.</p>';
+}
+function mazeSVG(){
+  const {W,H,open,exit}=G.s2,c=52,m=26,w=m+W*c+6,h=m+H*c+6;
+  let s='<svg viewBox="0 0 '+w+' '+h+'" class="maze" role="img" aria-label="Карта минного поля">';
+  s+='<rect x="'+m+'" y="'+m+'" width="'+(W*c)+'" height="'+(H*c)+'" rx="4"/>';
+  for(let x=0;x<W;x++)s+='<text x="'+(m+x*c+c/2)+'" y="17" text-anchor="middle">'+String.fromCharCode(65+x)+'</text>';
+  for(let y=0;y<H;y++)s+='<text x="11" y="'+(m+y*c+c/2+4)+'" text-anchor="middle">'+(y+1)+'</text>';
+  s+='<text class="star" x="'+(m+exit[0]*c+c/2)+'" y="'+(m+exit[1]*c+c/2+10)+'" text-anchor="middle">★</text>';
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+    const X=m+x*c,Y=m+y*c,o=open[y][x];
+    if(!o.n)s+='<line x1="'+X+'" y1="'+Y+'" x2="'+(X+c)+'" y2="'+Y+'"/>';
+    if(!o.w)s+='<line x1="'+X+'" y1="'+Y+'" x2="'+X+'" y2="'+(Y+c)+'"/>';
+    if(y===H-1&&!o.s)s+='<line x1="'+X+'" y1="'+(Y+c)+'" x2="'+(X+c)+'" y2="'+(Y+c)+'"/>';
+    if(x===W-1&&!o.e)s+='<line x1="'+(X+c)+'" y1="'+Y+'" x2="'+(X+c)+'" y2="'+(Y+c)+'"/>';
+  }
+  return s+'</svg>';
+}
+function s2(role,V){
+  if(role==='eng'){
+    return '<p class="hint">Сводка по минам. Войти в одну из этих клеток — значит подорваться. Карты у тебя нет, только координаты: столбцы A–F, ряды 1–6.</p>'+
+    '<div class="chips">'+G.s2.mines.map(m=>'<span class="chip">'+coord(m[0],m[1])+'</span>').join('')+'</div>';
+  }
+  if(role==='nav'){
+    return '<p class="hint">Карта минного поля. Звезда — выход. Где сейчас корабль, на карте не видно: это знает радист. Север — вверх.</p>'+mazeSVG();
+  }
+  if(role==='ops'){
+    const d=(k,ar,t)=>'<button data-a="mv" data-d="'+k+'" aria-label="'+t+'"><span>'+ar+'</span><small>'+t+'</small></button>';
+    return '<p class="hint">Ты управляешь кораблём, но не видишь карты. Стена стоит 3 секунды, мина — пробоину.</p>'+
+    '<div class="dpad"><span></span>'+d('n','↑','север')+'<span></span>'+d('w','←','запад')+'<span></span>'+d('e','→','восток')+'<span></span>'+d('s','↓','юг')+'<span></span></div>'+
+    '<div class="mvlog">'+esc(V.mv.t||'Ожидаем команду')+'</div>';
+  }
+  return '<p class="hint">Радар показывает позицию корабля. Столбцы A–F слева направо, ряды 1–6 сверху вниз.</p>'+
+  '<div class="pos">'+coord(V.pos[0],V.pos[1])+'</div>';
+}
+function s3(role,V){
+  const R=G.s3,rd=R.rounds[Math.min(V.rnd,2)];
+  const head='<p class="hint" style="margin-bottom:10px">Раунд '+(Math.min(V.rnd,2)+1)+' из 3</p>';
+  if(role==='eng')return head+'<p class="hint">Входящий сигнал. Что с ним делать, ты не знаешь.</p><div class="bigword">'+rd.sig+'</div>';
+  if(role==='nav')return head+'<p class="hint">Текущий режим шифра.</p><div class="bigword">'+R.modes[rd.mode]+'</div>';
+  if(role==='ops')return head+'<p class="hint">Выбери кодовое слово — какое именно, скажут остальные.</p><div class="codes">'+rd.btns.map(w=>'<button data-a="pick" data-w="'+esc(w)+'">'+esc(w)+'</button>').join('')+'</div>';
+  const tbl=t=>'<table class="tbl">'+R.sigs.map((w,i)=>'<tr><td>'+w+'</td><td>→</td><td><b>'+t[i]+'</b></td></tr>').join('')+'</table>';
+  return '<p class="hint">Шифровальные таблицы: сигнал → кодовое слово. Нужную таблицу определяет режим шифра.</p>'+
+    '<div class="two"><div><h4>Режим АЛЬФА</h4>'+tbl(R.tA)+'</div><div><h4>Режим БЕТА</h4>'+tbl(R.tB)+'</div></div>';
+}
+function s4(role,V){
+  const slots=[0,1,2,3].map(i=>'<div class="slot '+(i<V.ord?'on':'')+'">'+(i<V.ord?ROLES[G.s4.perm[i]].ic:(i+1))+'</div>').join('');
+  return '<p class="hint">Каждый из вас должен повернуть свой ключ в правильном порядке. У каждого — только один кусочек инструкции. Ошибка сбрасывает последовательность и пробивает корпус.</p>'+
+  '<div class="clue"><small>Твоя часть инструкции</small>'+clueText(G.s4.clues[role])+'</div>'+
+  '<div class="slots">'+slots+'</div>'+
+  '<button class="big launch" data-a="launch">🔑 Повернуть ключ</button>';
+}
+function panelHTML(role,V){
+  const body=V.st===0?s1(role,V):V.st===1?s2(role,V):V.st===2?s3(role,V):s4(role,V);
+  return shell(role,V,body);
+}
+function missingRoles(){
+  if(solo||!room)return[];
+  const h=holders();return RK.filter(r=>!h[r]);
+}
+
+/* ----- Игровой экран ----- */
+const GAME_SHELL='<div id="tabs"></div><div id="banner"></div><div id="panel"></div>';
+function fmt(t){return String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0');}
+function showGame(V){
+  if(screen!=='game'){
+    main.innerHTML=GAME_SHELL;screen='game';lastSig='';
+  }
+  if(!G||G.seed!==V.seed)G=gen(V.seed);
+  if(seenSeed!==V.seed){seenSeed=V.seed;lastEv=V.ev.n;lastPh=V.ph;if(!hosting&&!solo)lev=[0,0,0,0];}
+
+  hud.hidden=false;
+  $('#pips').innerHTML=[0,1,2,3].map(i=>'<span class="pip '+(V.ph==='win'||i<V.st?'done':i===V.st?'cur':'')+'"></span>').join('');
+  $('#hmod').textContent='Модуль '+Math.min(V.st+1,4)+' из 4';
+  const tm=$('#timer');tm.textContent=fmt(V.left);tm.className='timer'+(V.left<=60&&V.ph==='play'?' low':'');
+  $('#hull').innerHTML=[0,1,2].map(i=>'<i class="'+(i<V.hull?'':'off')+'" title="Корпус"></i>').join('');
+  $('#hroom').textContent=solo?'Тренировка':'Комната '+code;
+
+  if(V.ev.n!==lastEv){
+    lastEv=V.ev.n;
+    if(V.ev.t){toast(V.ev.t,V.ev.k);sfx(V.ev.k);}
+    if(V.ev.k==='bad'){hud.classList.remove('shake');void hud.offsetWidth;hud.classList.add('shake');}
+  }
+
+  const role=solo?soloRole:myRole,miss=missingRoles().join(',');
+  const sig=[V.ph,V.st,V.rnd,V.pos.join(),V.ord,V.mv.n,role||'-',miss,V.hull].join('|');
+  if(sig!==lastSig){lastSig=sig;renderPanel(V,role,miss);}
+
+  if(V.ph!==lastPh||(V.ph!=='play'&&ov.hidden)){lastPh=V.ph;renderOverlay(V);}
+  if(V.ph==='play'&&!ov.hidden){ov.hidden=true;}
+}
+function renderPanel(V,role,miss){
+  V=V||viewState();if(!V)return;
+  role=role===undefined?(solo?soloRole:myRole):role;
+  const tabs=$('#tabs'),ban=$('#banner'),pan=$('#panel');if(!pan)return;
+  tabs.innerHTML=solo?'<div class="tabs">'+RK.map(r=>'<button class="'+(soloRole===r?'on':'')+'" style="--ac:'+ROLES[r].c+'" data-a="tab" data-r="'+r+'">'+ROLES[r].ic+' '+ROLES[r].n+'</button>').join('')+'</div>':'';
+  const m=miss===undefined?missingRoles().join(','):miss;
+  ban.innerHTML=(!solo&&m)?'<div class="banner">⚠ Нет игрока на позиции: '+m.split(',').map(r=>ROLES[r].n).join(', ')+'. Без него миссию не пройти.</div>':'';
+  if(!role){
+    const h=holders();
+    pan.innerHTML='<div class="card pad"><b>Игра уже идёт.</b><p class="hint" style="margin-top:6px">Вы наблюдатель. Если в команде освободился отсек, можно его занять:</p><div class="roles">'+
+      RK.filter(r=>!h[r]).map(r=>'<button class="rolecard" style="--ac:'+ROLES[r].c+'" data-a="claim" data-r="'+r+'"><span class="ic">'+ROLES[r].ic+'</span><b>'+ROLES[r].n+'</b><small>'+ROLES[r].room+'</small></button>').join('')+'</div></div>';
+    return;
+  }
+  try{pan.innerHTML=V.ph==='play'||V.ph==='win'||V.ph==='lose'?panelHTML(role,V):'';}
+  catch(e){pan.innerHTML='<div class="card pad">Ошибка отображения панели.</div>';}
+}
+function renderOverlay(V){
+  if(V.ph==='play'){ov.hidden=true;return;}
+  const win=V.ph==='win';
+  const why=win?'Двигатели запущены, «Аврора-7» ушла из зоны аварии. Отличная работа команды.':
+    (V.why==='time'?'Время вышло: реактор не выдержал.':'Корпус разгерметизирован: три пробоины.');
+  const again=(solo||hosting)?'<button class="big" style="--ac:#ff9d3d" data-a="again">'+(solo?'В меню':'Сыграть ещё раз')+'</button>':'<p class="hint">Ждём, пока игрок, запустивший миссию, начнёт новую игру.</p>';
+  ov.innerHTML='<div class="card box"><h2 style="color:'+(win?'var(--good)':'var(--bad)')+'">'+(win?'Корабль спасён':'Корабль потерян')+'</h2><p>'+why+'</p>'+
+    '<div class="st"><span>⏱ '+fmt(V.left)+' в запасе</span><span>🛡 Пробоин: '+(3-V.hull)+'</span></div>'+again+'</div>';
+  ov.hidden=false;sfx(win?'ok':'bad');
+}
+
+/* ======================================================================
+   Главный рендер
+   ====================================================================== */
+function render(){
+  if(mode==='menu'){if(screen!=='menu')showMenu();return;}
+  if(mode==='solo'){if(S)showGame(S);return;}
+  if(!room)return;
+  const V=viewState();
+  if(!V||!okState(V)){
+    if(screen==='game'){ov.hidden=true;lastSig='';}
+    showLobby();return;
+  }
+  showGame(V);
+}
+
+/* ======================================================================
+   События интерфейса
+   ====================================================================== */
+main.addEventListener('click',e=>{
+  const b=e.target.closest('[data-a]');if(!b||b.disabled)return;
+  const a=b.dataset.a;
+  switch(a){
+    case'online':goOnline();break;
+    case'solo':
+      solo=true;mode='solo';myRole=null;soloRole='eng';screen='';chat.hidden=true;startGame();break;
+    case'leave':leaveRoom();break;
+    case'claim':claim(b.dataset.r);break;
+    case'start':startGame();break;
+    case'lv':{const i=+b.dataset.i;lev[i]=(lev[i]+(+b.dataset.d)+10)%10;renderPanel(viewState());break;}
+    case'apply':send({k:'apply',d:lev.slice()});break;
+    case'mv':send({k:'mv',d:b.dataset.d});break;
+    case'pick':send({k:'pick',w:b.dataset.w});break;
+    case'launch':send({k:'launch'});break;
+    case'tab':soloRole=b.dataset.r;lastSig='';render();break;
+  }
+});
+ov.addEventListener('click',e=>{
+  const b=e.target.closest('[data-a="again"]');if(!b)return;
+  ov.hidden=true;lastPh='';backToLobby();
+});
+$('#csend').addEventListener('click',sendChat);
+$('#cin').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();sendChat();}});
+
+showMenu();
+})();
+</script>
+</body>
+</html>
