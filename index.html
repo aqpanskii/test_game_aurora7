@@ -321,7 +321,7 @@ input:focus-visible{border-color:var(--cyan)}
 </div>
 <div id="ov" hidden></div>
 <div id="toast" role="status" aria-live="polite"></div>
-<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+
 <script>
 (function(){
 'use strict';
@@ -636,6 +636,7 @@ function tick(){
 }
 function startTimer(){clearInterval(timer);endAt=Date.now()+S.left*1000;timer=setInterval(tick,400);}
 function startGame(){
+  if(!solo&&!iAmCreator())return;
   const seed=(Math.random()*2147483647)|0;
   G=gen(seed);S=newState(seed);hosting=!solo;lev=[0,0,0,0];marks={};typed='';lastN={};
   startTimer();
@@ -649,116 +650,7 @@ function backToLobby(){
   render();
 }
 
-/*NET-START*/
-/* ======================================================================
-   Сеть на PeerJS (WebRTC). Первый игрок с данным кодом становится «узлом»
-   комнаты: остальные подключаются к нему, а он рассылает всем общую
-   таблицу присутствия. Интерфейс тот же, что и у комнаты Claude.
-   ====================================================================== */
-function createRoom(code){
-  return new Promise(function(resolve,reject){
-    const hubId='aurora7ship-'+code,me=Math.random().toString(36).slice(2,10);
-    let mine={},listeners=[],errs=[],connected=false,isHub=false,peer=null,hubConn=null,settled=false,retried=false,notifyT=null,bcastT=null,left=false;
-    const table={};let remote=[];
-    const merge=function(base,patch){const o=Object.assign({},base);for(const k in patch){if(patch[k]===null)delete o[k];else o[k]=patch[k];}return o;};
-    const tooBig=function(x){try{return JSON.stringify(x).length>6000;}catch(e){return true;}};
 
-    function list(){
-      let src=isHub?Object.keys(table).map(function(k){return{peer:k,presence:k===me?mine:table[k].presence};}):remote.map(function(r){return r.peer===me?{peer:me,presence:mine}:r;});
-      if(!src.some(function(r){return r.peer===me;}))src=src.concat([{peer:me,presence:mine}]);
-      return src.map(function(r){return{peer:r.peer,by:null,isMe:r.peer===me,sameTab:r.peer===me,kind:'viewer',guest:false,presence:r.presence||{},updatedAt:Date.now()};});
-    }
-    function notify(){
-      if(notifyT)return;
-      notifyT=setTimeout(function(){notifyT=null;const ps=list();listeners.slice().forEach(function(f){try{f({peers:ps,joined:[],left:[],updated:[]});}catch(e){console.error(e);}});},0);
-    }
-    function bcast(){
-      if(bcastT)return;
-      bcastT=setTimeout(function(){
-        bcastT=null;
-        const msg={t:'s',peers:Object.keys(table).map(function(k){return{peer:k,presence:k===me?mine:table[k].presence};})};
-        Object.keys(table).forEach(function(k){const c=table[k].conn;if(c&&c.open){try{c.send(msg);}catch(e){}}});
-      },30);
-    }
-    function fail(err){
-      if(settled)return;settled=true;
-      try{if(peer)peer.destroy();}catch(e){}
-      reject(err);
-    }
-    function finish(){
-      if(settled)return;settled=true;
-      resolve(api);notify();
-    }
-    function hubAccept(conn){
-      let label=null;
-      conn.on('data',function(d){
-        if(!d||typeof d!=='object')return;
-        if(d.t==='hello'&&typeof d.label==='string'&&!label){
-          if(Object.keys(table).length>=12||table[d.label]){try{conn.close();}catch(e){}return;}
-          label=d.label.slice(0,16);table[label]={presence:{},conn:conn};bcast();notify();
-        }else if(d.t==='p'&&label&&d.patch&&typeof d.patch==='object'&&!tooBig(d.patch)){
-          table[label].presence=merge(table[label].presence,d.patch);bcast();notify();
-        }
-      });
-      conn.on('close',function(){if(label&&table[label]&&table[label].conn===conn){delete table[label];bcast();notify();}});
-      conn.on('error',function(){});
-    }
-    function tryHub(){
-      peer=new Peer(hubId,{debug:0});
-      peer.on('open',function(){isHub=true;connected=true;table[me]={presence:mine,conn:null};peer.on('connection',hubAccept);finish();});
-      peer.on('error',function(err){
-        if(!isHub&&!settled&&err&&err.type==='unavailable-id'){try{peer.destroy();}catch(e){}tryClient();}
-        else if(!settled)fail(err);
-        else errs.slice().forEach(function(f){f({code:'upstream_error',message:String(err&&err.type)});});
-      });
-    }
-    function tryClient(){
-      peer=new Peer({debug:0});
-      peer.on('open',function(){
-        const c=peer.connect(hubId,{reliable:true,serialization:'json'});
-        hubConn=c;
-        c.on('open',function(){
-          c.send({t:'hello',label:me});
-          if(Object.keys(mine).length)c.send({t:'p',patch:mine});
-          connected=true;finish();
-        });
-        c.on('data',function(d){
-          if(d&&d.t==='s'&&Array.isArray(d.peers)){
-            remote=d.peers.filter(function(r){return r&&typeof r.peer==='string'&&r.presence&&typeof r.presence==='object';});
-            notify();
-          }
-        });
-        c.on('close',function(){
-          connected=false;remote=[];notify();
-          if(!left)errs.slice().forEach(function(f){f({code:'upstream_error',message:'hub closed'});});
-        });
-      });
-      peer.on('error',function(err){
-        if(!settled&&!retried&&err&&err.type==='peer-unavailable'){retried=true;try{peer.destroy();}catch(e){}tryHub();}
-        else if(!settled)fail(err);
-        else{connected=false;errs.slice().forEach(function(f){f({code:'upstream_error',message:String(err&&err.type)});});}
-      });
-    }
-    const api={
-      peers:function(){return list();},
-      onPeers:function(fn,onErr){
-        listeners.push(fn);if(onErr)errs.push(onErr);
-        return function(){listeners=listeners.filter(function(x){return x!==fn;});errs=errs.filter(function(x){return x!==onErr;});};
-      },
-      presence:function(patch){
-        mine=merge(mine,patch);
-        if(isHub){table[me].presence=mine;bcast();}
-        else if(hubConn&&hubConn.open){try{hubConn.send({t:'p',patch:patch});}catch(e){}}
-        notify();return Promise.resolve();
-      },
-      connected:function(){return connected;},
-      leave:function(){left=true;connected=false;try{if(peer)peer.destroy();}catch(e){}return Promise.resolve();}
-    };
-    setTimeout(function(){fail(new Error('timeout'));},15000);
-    tryHub();
-  });
-}
-/*NET-END*/
 
 /* ======================================================================
    Сеть: состояние публикует хост, остальные шлют действия
@@ -770,6 +662,12 @@ function holders(){
   viewers().filter(p=>p.presence&&ROLES[p.presence.role]).sort(byPeer).forEach(p=>{if(!m[p.presence.role])m[p.presence.role]=p;});
   return m;
 }
+function creator(){
+  const ps=viewers().filter(p=>p.presence&&typeof p.presence.jt==='number');
+  ps.sort((a,b)=>a.presence.jt-b.presence.jt||byPeer(a,b));
+  return ps[0]||null;
+}
+function iAmCreator(){const c=creator();return !!(c&&c.isMe);}
 function okState(st){
   return st&&typeof st==='object'&&typeof st.ph==='string'&&typeof st.seed==='number'&&st.st>=0&&st.st<12&&
     st.x&&typeof st.x==='object'&&st.ev&&typeof st.ev==='object'&&typeof st.left==='number'&&typeof st.hull==='number';
@@ -828,15 +726,16 @@ async function goOnline(){
   myName=nm;code=cd;menuErr='';
   main.innerHTML='<div class="card pad"><b>Подключаемся к комнате…</b></div>';
   try{
-    if(typeof Peer==='undefined')throw new Error('no-peerjs');
-    room=await createRoom(cd);
+    const base=(window.claude&&window.claude.use)?await window.claude.use('room'):null;
+    if(!base)throw new Error('no-room');
+    room=await base.join('ship-'+cd);
   }catch(e){
-    room=null;menuErr='Не удалось подключиться к серверу соединения (PeerJS). Проверьте интернет и повторите. Если не помогает — возможно, сеть блокирует WebRTC. Пока можно потренироваться в одиночку.';
+    room=null;menuErr='Не удалось подключиться. Онлайн-режим работает, когда страница открыта в Claude и у игроков есть к ней доступ. Можно потренироваться в одиночку.';
     showMenu();return;
   }
   mode='online';solo=false;myRole=null;lastN={};chatSeen={};chatLog=[];
   room.onPeers(onPeers,()=>{toast('Соединение с комнатой потеряно','bad');});
-  room.presence({name:myName,role:null}).catch(()=>{});
+  room.presence({name:myName,role:null,jt:(room.isHub&&room.isHub())?1:Date.now()}).catch(()=>{});
   chat.hidden=false;renderChat();
   render();
 }
@@ -902,7 +801,7 @@ function showMenu(){
   '<div class="row2"><label>Ваш позывной<input id="iname" maxlength="16" value="'+esc(myName)+'" autocomplete="off"></label>'+
   '<label>Код комнаты<input id="icode" maxlength="10" value="'+esc(code)+'" autocomplete="off"></label></div>'+
   '<button class="big" style="--ac:#ff9d3d" data-a="online">Войти в комнату</button>'+
-  '<p class="hint sm">Все трое открывают эту страницу и вводят один и тот же код. Кто зашёл первым, тот создаёт комнату и должен оставаться на странице до конца игры. Для общения лучше включить голосовой звонок — в игре есть и текстовый чат.</p></div>'+
+  '<p class="hint sm">Все трое открывают эту страницу и вводят один и тот же код. Для общения лучше включить голосовой звонок — в игре есть и текстовый чат.</p></div>'+
   '<div class="card pad"><b>Тренировка</b><p class="hint" style="margin-top:6px">Один человек за всех троих: переключайтесь между отсеками сами. Хорошо, чтобы изучить игру — но по-настоящему она раскрывается только втроём.</p>'+
   '<button data-a="solo">Играть одному</button></div>'+
   '<details class="card"><summary>Как играть</summary><ol>'+
@@ -916,7 +815,7 @@ function showMenu(){
 function showLobby(){
   if(document.body)document.body.classList.remove('alert');
   screen='lobby';hud.hidden=true;ov.hidden=true;lastSig='';
-  const h=holders(),ps=viewers(),ready=RK.every(r=>h[r]);
+  const h=holders(),ps=viewers(),ready=RK.every(r=>h[r]),cr=creator();
   const hint=ready?'Все три отсека заняты. Можно начинать.':'Займите каждый свой отсек — нужны все три роли.';
   main.innerHTML=
   '<div class="hazard"></div>'+
@@ -927,10 +826,10 @@ function showLobby(){
     const o=ROLES[r],p=h[r],mine=myRole===r;
     return '<button class="rolecard '+(p?'taken ':'')+(mine?'mine':'')+'" style="--ac:'+o.c+'" data-a="claim" data-r="'+r+'"'+(p&&!p.isMe?' disabled':'')+'>'+
       '<span class="ic">'+o.ic+'</span><b>'+o.n+'</b><small>'+o.room+'</small>'+
-      '<em>'+(p?(p.isMe?'Это вы':esc(String(p.presence.name||'Игрок').slice(0,16))):'свободно — нажмите, чтобы занять')+'</em></button>';
+      '<em>'+(p?((cr&&cr.peer===p.peer?'👑 ':'')+(p.isMe?'Это вы':esc(String(p.presence.name||'Игрок').slice(0,16)))):'свободно — нажмите, чтобы занять')+'</em></button>';
   }).join('')+'</div>'+
-  '<button class="big" style="--ac:#ff9d3d" data-a="start" '+(ready&&myRole?'':'disabled')+'>Запустить миссию</button>'+
-  '<p class="hint sm">'+(myRole?'':'Сначала выберите свою роль. ')+'Если создатель комнаты или игрок, нажавший «Запустить», закроет вкладку, миссия прервётся.</p>';
+  '<button class="big" style="--ac:#ff9d3d" data-a="start" '+(cr&&cr.isMe&&ready&&myRole?'':'disabled')+'>Запустить миссию</button>'+
+  '<p class="hint sm">'+(cr?(cr.isMe?'Вы создатель комнаты — миссию запускаете вы. ':'Миссию запускает только создатель комнаты: <b>'+esc(String(cr.presence.name||'Игрок').slice(0,16))+'</b>. '):'')+(myRole?'':'Сначала выберите свою роль. ')+'Если создатель комнаты закроет вкладку, миссия прервётся.</p>';
 }
 
 /* ----- Космос: галактика и звёзды (рисуется кодом) ----- */
@@ -1317,7 +1216,7 @@ main.addEventListener('click',e=>{
     case'solo':solo=true;mode='solo';myRole=null;soloRole='eng';screen='';chat.hidden=true;startGame();break;
     case'leave':leaveRoom();break;
     case'claim':claim(b.dataset.r);break;
-    case'start':startGame();break;
+    case'start':if(solo||iAmCreator())startGame();else toast('Запустить миссию может только создатель комнаты','bad');break;
     case'lv':{const i=+b.dataset.i;lev[i]=(lev[i]+(+b.dataset.d)+10)%10;renderPanel(viewState());break;}
     case'mark':{const k=b.dataset.k;marks[k]=!marks[k];renderPanel(viewState());break;}
     case'apply':send({k:'apply',d:lev.slice()});break;
